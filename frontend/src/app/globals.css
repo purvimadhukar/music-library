@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "URW Palladio L", serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --crate-bg: #17140f;
+  --crate-bg-raised: #1f1b14;
+  --crate-card: #221d16;
+  --crate-ink: #f3eee3;
+  --crate-ink-muted: #b8ae9c;
+  --crate-line: #35301f;
+  --crate-accent: #e8a33d;
+  --crate-accent-ink: #17140f;
+  --crate-teal: #4f8f8c;
+  --crate-red: #c1543f;
+}
+
+@theme inline {
+  --color-crate-bg: var(--crate-bg);
+  --color-crate-bg-raised: var(--crate-bg-raised);
+  --color-crate-card: var(--crate-card);
+  --color-crate-ink: var(--crate-ink);
+  --color-crate-ink-muted: var(--crate-ink-muted);
+  --color-crate-line: var(--crate-line);
+  --color-crate-accent: var(--crate-accent);
+  --color-crate-accent-ink: var(--crate-accent-ink);
+  --color-crate-teal: var(--crate-teal);
+  --color-crate-red: var(--crate-red);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--crate-line);
+}
+
+body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
+
+::selection {
+  background: var(--crate-accent);
+  color: var(--crate-accent-ink);
+}
+
+.groove-divider {
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--crate-line) 0px,
+    var(--crate-line) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
