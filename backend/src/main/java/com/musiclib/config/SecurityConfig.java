@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
@@ -42,9 +43,10 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/**", "/h2-console/**", "/actuator/health").permitAll()
-                    .anyRequest().authenticated()
-            )
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        .requestMatchers("/api/auth/**", "/h2-console/**", "/actuator/health").permitAll()
+        .anyRequest().authenticated()
+)
             .headers(headers -> headers.frameOptions(frame -> frame.disable())) // for h2-console
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
