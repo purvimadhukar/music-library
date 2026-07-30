@@ -151,10 +151,8 @@ export DATABASE_PASSWORD=yourpassword
 ```
 Other useful env vars: `JWT_SECRET`, `CORS_ORIGINS`, `AI_PROVIDER`, `ANTHROPIC_API_KEY`.
 
-> **Note on this submission:** the backend was written and reviewed carefully but not
-> compiled in the environment this was authored in (no Maven Central access there). Please
-> run `mvn spring-boot:run` as your first step locally — happy to fix any compile issues
-> that surface, but the code follows standard, verified Spring Boot 3 patterns throughout.
+
+The application has been successfully deployed and tested using Render (backend), PostgreSQL, and Vercel (frontend). Authentication, library management, analytics, and AI insights have been verified through the deployed application.
 
 ### Frontend
 ```bash
@@ -184,8 +182,13 @@ Suggested split: **Render** (backend + managed Postgres) + **Vercel** (frontend)
 2. Set `NEXT_PUBLIC_API_BASE_URL` to the Render backend URL.
 3. Deploy.
 
-*(Live URLs to be added here once deployed — deployment requires account access this
-environment doesn't have, so it's left for you to run through the two steps above.)*
+## Live Deployment
+
+### Frontend
+https://music-library-chi-seven.vercel.app
+
+### Backend API
+https://music-library-f81p.onrender.com
 
 ---
 
