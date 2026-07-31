@@ -92,7 +92,9 @@ JWT (`Authorization: Bearer <token>`, obtained via `/api/auth/login` or `/api/au
 | PUT | `/api/library/{id}` | Update `userRating` / `userNotes` |
 | DELETE | `/api/library/{id}` | Remove an album from the library |
 | GET | `/api/analytics` | Aggregated stats for charts |
-| GET | `/api/ai/insights` | AI-generated taste/trend summary |
+| GET | `/api/ai/insights` | (legacy) AI-generated taste/trend summary — no longer used in the UI |
+| GET | `/api/ai/games/guess-album` | Random album's clues (artist/genre/year/tracks), title withheld |
+| GET | `/api/ai/games/emoji-challenge` | Random album's title translated to emoji, title withheld |
 
 Validation is enforced via Bean Validation annotations on request DTOs; all errors
 (validation, not-found, duplicate, auth, upstream iTunes failures) flow through a single
@@ -100,24 +102,35 @@ Validation is enforced via Bean Validation annotations on request DTOs; all erro
 
 ---
 
-## 5. AI feature: Trend & Taste Summary
+## 5. AI feature: Guess the Album & Emoji Challenge
 
-`GET /api/ai/insights` returns a short natural-language paragraph describing the user's
-saved library: dominant genre, most-saved artist, era spread, average rating, and a
-gap-based suggestion for a genre they haven't explored yet.
+Two lightweight AI-flavored guessing games, both built entirely from the user's own
+saved library rather than a passive summary:
 
-Two interchangeable modes (`app.ai.provider` / `AI_PROVIDER` env var):
+- **`GET /api/ai/games/guess-album`** — picks a random album from your library and
+  returns its clues (artist, genre, release year, track count) with the title held
+  back. The frontend shows the clues and a text input; typing a correct guess earns a
+  celebratory "hurrah" message and a point, a wrong guess gets a gentle reveal
+  ("Oops, that's okay! It was _X_.") instead of penalizing you.
+- **`GET /api/ai/games/emoji-challenge`** — translates a random saved album's title
+  into an emoji sequence (e.g. a title containing "night," "gold," "dream" maps to
+  🌙🥇💭) via a word-to-emoji dictionary, again with a type-to-guess input.
 
-- **`heuristic` (default)** — a deterministic, template-driven summary computed purely
-  from the same numbers behind the analytics dashboard. Works instantly, offline, with
-  zero configuration or API cost — important for a gradeable demo that shouldn't depend
-  on a live LLM key.
-- **`anthropic`** — if `ANTHROPIC_API_KEY` is set, the same analytics JSON is sent to
-  Claude for a warmer, more specific summary, with automatic fallback to the heuristic
-  summary if the call fails for any reason.
+Both endpoints throw a clear 404 ("Save at least one album to your library to play")
+if the library is empty, handled by the same centralized error handler as the rest of
+the API.
 
-This shows the intended real integration path while keeping the default path fully
-self-contained.
+Guess checking is forgiving: it lower-cases, trims, and strips punctuation before
+comparing, so minor formatting differences don't count against you. A small points
+counter ("🎟️ N points toward a free concert ticket") tracks correct guesses per
+session as a lighthearted nod to a reward, without needing real backend state for it.
+
+Card generation itself is heuristic/deterministic — no external API calls, so the
+games work instantly with zero configuration or cost. (An earlier iteration of this
+feature was a passive "trend & taste summary" paragraph generated from the same
+analytics numbers, with an optional real Anthropic API call; that logic still exists
+in `AiInsightService` but isn't wired into the UI anymore in favor of the games, which
+turned out to be more fun to actually use.)
 
 ---
 
@@ -129,7 +142,7 @@ self-contained.
   empty states throughout.
 - **Analytics dashboard** — 5 charts via Recharts: genre donut, top-artists horizontal
   bar, releases-by-year line chart, rating histogram, and albums-by-decade bar — plus
-  the AI insight panel.
+  the two AI guessing games (Guess the Album, Emoji Challenge).
 - Auth is JWT-based, stored in `localStorage`, attached via an axios interceptor; a
   401 response clears the session and redirects to `/login`.
 
@@ -151,11 +164,6 @@ export DATABASE_PASSWORD=yourpassword
 ```
 Other useful env vars: `JWT_SECRET`, `CORS_ORIGINS`, `AI_PROVIDER`, `ANTHROPIC_API_KEY`.
 
-> **Note on this submission:** the backend was written and reviewed carefully but not
-> compiled in the environment this was authored in (no Maven Central access there). Please
-> run `mvn spring-boot:run` as your first step locally — happy to fix any compile issues
-> that surface, but the code follows standard, verified Spring Boot 3 patterns throughout.
-
 ### Frontend
 ```bash
 cd frontend
@@ -171,21 +179,26 @@ both pass cleanly.
 
 ## 8. Deployment
 
-Suggested split: **Render** (backend + managed Postgres) + **Vercel** (frontend).
+**Live URLs:**
+- Frontend: https://music-library-chi-seven.vercel.app
+- Backend API: https://music-library-f81p.onrender.com
+
+Deployed as: **Render** (backend + managed Postgres) + **Vercel** (frontend).
 
 **Backend on Render:**
-1. New Web Service → point at `backend/`, build command `mvn clean package -DskipTests`,
-   start command `java -jar target/music-library-1.0.0.jar`.
-2. Add a Render Postgres instance, set `DATABASE_URL`/`DATABASE_USERNAME`/`DATABASE_PASSWORD`.
-3. Set `JWT_SECRET` (long random string) and `CORS_ORIGINS` to your Vercel frontend URL.
+- Web Service pointed at `backend/` in this repo
+- Build command: `mvn clean package -DskipTests`
+- Start command: `java -jar target/music-library-1.0.0.jar`
+- Managed Render Postgres instance, connected via `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD`
+- `JWT_SECRET` and `CORS_ORIGINS` (set to the Vercel frontend URL above) configured as environment variables
 
 **Frontend on Vercel:**
-1. Import the `frontend/` directory as the project root.
-2. Set `NEXT_PUBLIC_API_BASE_URL` to the Render backend URL.
-3. Deploy.
+- Project root set to `frontend/`
+- `NEXT_PUBLIC_API_BASE_URL` environment variable set to the Render backend URL above
 
-*(Live URLs to be added here once deployed — deployment requires account access this
-environment doesn't have, so it's left for you to run through the two steps above.)*
+Note: Render's free tier spins down services after inactivity, so the backend may take
+30-60 seconds to respond to the first request after a period of no traffic — this is
+expected free-tier behavior, not a bug.
 
 ---
 
@@ -200,7 +213,10 @@ Given the 3-day scope, priority went to a correct, coherent core over exhaustive
 - **iTunes caching** is a simple in-memory 5-minute TTL map, fine for a demo/single
   instance; a real deployment would want Redis or Caffeine with proper eviction.
 - **Rate limiting** isn't implemented on the search endpoint.
-- **AI feature** ships with a free heuristic mode by default; the Anthropic integration
-  path is wired and tested for shape but needs a real API key to exercise end-to-end.
-- Duplicate-detection was considered as the AI feature but Trend Summary was chosen
-  since it makes better use of the full analytics surface already being computed.
+- **AI feature** ships as two guessing games with zero configuration or API cost by
+  design (heuristic clue selection and emoji mapping, no external calls). A passive
+  "trend & taste summary" (optionally backed by a real Anthropic API call) was the
+  first iteration and its service code is still in the repo, but the games were more
+  engaging to actually use, so they replaced it as the primary feature.
+- Points in the games reset per session (no backend persistence) — a reasonable scope
+  cut for a 3-day project; a real leaderboard would need a `scores` table.
